@@ -39,18 +39,11 @@ app.MapPost("/auth/login", (HttpContext http, AppDatabase db, SessionStore sessi
         return Results.Redirect("/login?error=1");
     }
 
-    var token = sessions.Create(user.Id);
+    // Ett gammalt sessions-ID får aldrig överleva en inloggning.
+    sessions.Invalidate(http.Request.Cookies[CurrentUser.CookieName]);
 
-    // HttpOnly stänger ute JavaScript, Secure kräver HTTPS och SameSite
-    // hindrar att cookien följer med vid anrop från andra webbplatser.
-    http.Response.Cookies.Append(CurrentUser.CookieName, token, new CookieOptions
-    {
-        HttpOnly = true,
-        Secure = true,
-        SameSite = SameSiteMode.Lax,
-        Path = "/",
-        MaxAge = TimeSpan.FromMinutes(30),
-    });
+    var token = sessions.Create(user.Id);
+    http.Response.Cookies.Append(CurrentUser.CookieName, token, CurrentUser.CreateCookieOptions());
 
     return Results.Redirect("/profile");
 }).DisableAntiforgery();
@@ -58,7 +51,10 @@ app.MapPost("/auth/login", (HttpContext http, AppDatabase db, SessionStore sessi
 // ── Utloggning ─────────────────────────────────────────────────────────────
 app.MapPost("/auth/logout", (HttpContext http, SessionStore sessions) =>
 {
-    http.Response.Cookies.Delete(CurrentUser.CookieName);
+    // Sessionen måste bort på serversidan. Annars fortsätter en kopierad
+    // token att fungera efter utloggningen.
+    sessions.Invalidate(http.Request.Cookies[CurrentUser.CookieName]);
+    http.Response.Cookies.Delete(CurrentUser.CookieName, CurrentUser.CreateCookieOptions());
 
     return Results.Redirect("/");
 }).DisableAntiforgery();
