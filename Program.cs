@@ -40,7 +40,17 @@ app.MapPost("/auth/login", (HttpContext http, AppDatabase db, SessionStore sessi
     }
 
     var token = sessions.Create(user.Id);
-    http.Response.Cookies.Append(CurrentUser.CookieName, token);
+
+    // HttpOnly stänger ute JavaScript, Secure kräver HTTPS och SameSite
+    // hindrar att cookien följer med vid anrop från andra webbplatser.
+    http.Response.Cookies.Append(CurrentUser.CookieName, token, new CookieOptions
+    {
+        HttpOnly = true,
+        Secure = true,
+        SameSite = SameSiteMode.Lax,
+        Path = "/",
+        MaxAge = TimeSpan.FromMinutes(30),
+    });
 
     return Results.Redirect("/profile");
 }).DisableAntiforgery();
