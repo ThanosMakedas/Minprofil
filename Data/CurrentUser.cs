@@ -16,6 +16,17 @@ public class CurrentUser
         _database = database;
     }
 
+    // Cookien måste sättas och tas bort med samma attribut, annars hittar
+    // webbläsaren inte rätt cookie när den ska tas bort vid utloggning.
+    public static CookieOptions CreateCookieOptions() => new()
+    {
+        HttpOnly = true,
+        Secure = true,
+        SameSite = SameSiteMode.Lax,
+        Path = "/",
+        MaxAge = SessionStore.IdleTimeout,
+    };
+
     public string? Token =>
         _httpContextAccessor.HttpContext?.Request.Cookies[CookieName];
 

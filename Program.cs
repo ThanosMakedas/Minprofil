@@ -39,8 +39,11 @@ app.MapPost("/auth/login", (HttpContext http, AppDatabase db, SessionStore sessi
         return Results.Redirect("/login?error=1");
     }
 
+    // Ett gammalt sessions-ID får aldrig överleva en inloggning.
+    sessions.Invalidate(http.Request.Cookies[CurrentUser.CookieName]);
+
     var token = sessions.Create(user.Id);
-    http.Response.Cookies.Append(CurrentUser.CookieName, token);
+    http.Response.Cookies.Append(CurrentUser.CookieName, token, CurrentUser.CreateCookieOptions());
 
     return Results.Redirect("/profile");
 }).DisableAntiforgery();
@@ -48,7 +51,10 @@ app.MapPost("/auth/login", (HttpContext http, AppDatabase db, SessionStore sessi
 // ── Utloggning ─────────────────────────────────────────────────────────────
 app.MapPost("/auth/logout", (HttpContext http, SessionStore sessions) =>
 {
-    http.Response.Cookies.Delete(CurrentUser.CookieName);
+    // Sessionen måste bort på serversidan. Annars fortsätter en kopierad
+    // token att fungera efter utloggningen.
+    sessions.Invalidate(http.Request.Cookies[CurrentUser.CookieName]);
+    http.Response.Cookies.Delete(CurrentUser.CookieName, CurrentUser.CreateCookieOptions());
 
     return Results.Redirect("/");
 }).DisableAntiforgery();
